@@ -320,7 +320,17 @@ class PCellWrapper(pya.PCellDeclaration):
                 tclDict = PCellWrapper._dict2TclDict(parameters)
                 PCellWrapper._tcl.eval(f"setCurrentCellParameters {{{tclDict}}}")
 
+                defValueNames = {}
                 deviceCallbacks = PCellWrapper._callbackMap[self.name()]
+                if 'parameters' in PCellWrapper._callbackMap[self.name()]:
+                    for parameter in deviceCallbacks["parameters"]:
+                        if 'defValue' in parameter:
+                            defValue = parameter['defValue'].replace("{device}", self.name())
+                            defValueNames[parameter['name']] = defValue
+
+                    tclDict = PCellWrapper._dict2TclDict(defValueNames)
+                    PCellWrapper._tcl.eval(f"setCurrentCellParamDefValueNames {{{tclDict}}}")
+
                 for callback in deviceCallbacks["callbacks"]:
                     for pcellParameter in callback['pcellParameters']:
                         parameterToUse = self._changedParameter
@@ -357,22 +367,23 @@ class PCellWrapper(pya.PCellDeclaration):
                 parameterValues.clear();
                 idx = 0
                 for key, value in cellParameters.items():
-                    valueType = type(value)
+                    if key in parameters.keys():
+                        valueType = type(value)
 
-                    # NOTE: the callback returns the value the way it is spelled in the
-                    #       parameter definition, so a parameter declared as '0.15u' comes
-                    #       back scaled ('6.0u'), which the builtin conversions reject.
-                    if PCellWrapper._parameterTypeList[idx] == PCellWrapper._intType:
-                        value = int(Numeric(value))
-                    elif PCellWrapper._parameterTypeList[idx] == PCellWrapper._floatType:
-                        value = float(Numeric(value))
-                    elif PCellWrapper._parameterTypeList[idx] == PCellWrapper._strType:
-                        value = str(value)
-                    elif PCellWrapper._parameterTypeList[idx] == PCellWrapper._boolType:
-                        value = bool(value != "" and value != "0")
+                        # NOTE: the callback returns the value the way it is spelled in the
+                        #       parameter definition, so a parameter declared as '0.15u' comes
+                        #       back scaled ('6.0u'), which the builtin conversions reject.
+                        if PCellWrapper._parameterTypeList[idx] == PCellWrapper._intType:
+                            value = int(Numeric(value))
+                        elif PCellWrapper._parameterTypeList[idx] == PCellWrapper._floatType:
+                            value = float(Numeric(value))
+                        elif PCellWrapper._parameterTypeList[idx] == PCellWrapper._strType:
+                            value = str(value)
+                        elif PCellWrapper._parameterTypeList[idx] == PCellWrapper._boolType:
+                            value = bool(value != "" and value != "0")
 
-                    parameterValues.append(value)
-                    idx = idx + 1
+                        parameterValues.append(value)
+                        idx = idx + 1
 
         return parameterValues
 
